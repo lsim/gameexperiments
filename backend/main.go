@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-// helloWorld handler returns a json response with a 'Hello, World' message.
-//
 func helloWorld(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
@@ -48,6 +46,7 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	http.Handle("/lib/", http.StripPrefix("/lib/", http.FileServer(http.Dir("./node_modules/"))))
 	http.Handle("/", http.FileServer(http.Dir("./frontend/")))
 
 	http.HandleFunc("/api/socket", socketHandler)
