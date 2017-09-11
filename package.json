@@ -1,0 +1,26 @@
+{
+  "name": "gameexperiments",
+  "version": "1.0.0",
+  "description": "Game experiments?",
+  "main": "frontend/index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lsim/gameexperiments.git"
+  },
+  "keywords": [
+    "experiments",
+    "learning"
+  ],
+  "author": "lsim",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lsim/gameexperiments/issues"
+  },
+  "homepage": "https://github.com/lsim/gameexperiments#readme",
+  "dependencies": {
+    "phaser-ce": "^2.8.6"
+  }
+}
