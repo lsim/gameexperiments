@@ -5,6 +5,7 @@ import (
 	"time"
 	"log"
 	"net/http"
+	"github.com/lsim/gameexperiments/backend/game"
 )
 
 const (
@@ -23,11 +24,19 @@ const (
 
 // Maybe this should be somewhere else?
 type OutBoundMessage struct {
-	OutMsg string
+	GameState game.State
 }
 
+type MessageType int
+
+const (
+	Register MessageType = iota
+
+)
+
 type InBoundMessage struct {
-	InMsg string
+	Type MessageType
+	Data interface{}
 }
 
 type ClientInBoundMessage struct {
@@ -45,6 +54,8 @@ type Client struct {
 	send chan OutBoundMessage
 
 	receive chan InBoundMessage
+
+	player *game.Player
 }
 
 // readPump pumps messages from the websocket connection to the hub.

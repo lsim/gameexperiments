@@ -1,28 +1,46 @@
 
 $(() => {
-  // $.get('api/hello', function(data) {
-  //   console.debug("received hello from server", JSON.parse(data));
-  // });
 
-  let socket = new WebSocket(`ws://${location.host}/api/socket`);
-
-  socket.onerror = (event) => {
-    console.error(event);
+  let messageTypes = {
+    Register: 0,
   };
 
-  socket.onopen = (event) => {
-    console.debug("onopen", event);
+  let socket;
+
+  let connectToServer = () => {
+    socket = new WebSocket(`ws://${location.host}/api/socket`);
+
+    socket.onerror = (event) => {
+      console.error(event);
+      setTimeout(connectToServer, 1000)
+    };
+
+    socket.onopen = (event) => {
+      console.debug("onopen", event);
+      sendMessage(messageTypes.Register, "Foobar")
+    };
+
+    socket.onmessage = (event) => {
+      handleMessage(JSON.parse(event.data))
+    };
   };
 
-  socket.onmessage = (event) => {
-    console.debug("onmessage", event);
-  };
-
-  let interval = setInterval(() => {
+  let sendMessage = (messageType, data) => {
     socket.send(JSON.stringify({
-      inMsg: "" + new Date().getSeconds()
-    }))
-  }, 3000);
+      Type: messageType,
+      Data: data
+    }));
+  };
+
+  let handleMessage = (gameState) => {
+    //console.debug("onmessage", gameState);
+  };
+
+  // let interval = setInterval(() => {
+  //   socket.send(JSON.stringify({
+  //     inMsg: "" + new Date().getSeconds()
+  //   }))
+  // }, 3000);
 
   function preload () {
     game.load.image('diamond', 'assets/diamond.png');
@@ -36,6 +54,7 @@ $(() => {
     game.physics.arcade.enable(diamond);
     diamond.body.collideWorldBounds = true;
     cursors = game.input.keyboard.createCursorKeys();
+    connectToServer()
   }
 
   function update () {
