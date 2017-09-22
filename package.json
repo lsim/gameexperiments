@@ -2,9 +2,19 @@
   "name": "gameexperiments",
   "version": "1.0.0",
   "description": "Game experiments?",
-  "main": "frontend/index.html",
+  "main": "index.html",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "watchify": "watchify -vd -p browserify-hmr -e frontend/src/main.js -o frontend/dist/build.js",
+    "serve": "http-server -o -c 1 -a localhost",
+    "dev": "npm-run-all --parallel watchify serve",
+    "build": "cross-env NODE_ENV=production browserify -g envify -p [ vueify/plugins/extract-css -o frontend/dist/build.css ] -e frontend/src/main.js | uglifyjs -c warnings=false -m > frontend/dist/build.js"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "vueify"
+    ]
   },
   "repository": {
     "type": "git",
@@ -21,6 +31,26 @@
   },
   "homepage": "https://github.com/lsim/gameexperiments#readme",
   "dependencies": {
-    "phaser-ce": "^2.8.6"
+    "phaser-ce": "^2.8.6",
+    "vue": "^2.0.1"
+  },
+  "devDependencies": {
+    "babel-core": "^6.0.0",
+    "babel-plugin-transform-runtime": "^6.0.0",
+    "babel-preset-es2015": "^6.0.0",
+    "babel-preset-stage-2": "^6.0.0",
+    "babel-runtime": "^6.0.0",
+    "babelify": "^7.2.0",
+    "browserify": "^13.1.0",
+    "browserify-hmr": "^0.3.1",
+    "cross-env": "^2.0.0",
+    "envify": "^3.4.1",
+    "http-server": "^0.9.0",
+    "node-sass": "^4.5.3",
+    "npm-run-all": "^2.3.0",
+    "proxyquireify": "^3.0.1",
+    "uglify-js": "^2.5.0",
+    "vueify": "^9.0.0",
+    "watchify": "^3.4.0"
   }
 }
