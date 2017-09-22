@@ -1,10 +1,10 @@
+// TODO: consider taking the plunge and getting webpack and vue.js set up. That would be pretty sweet
 
 $(() => {
 
   let messageTypes = {
     Register: 0,
   };
-
   let socket;
 
   let connectToServer = () => {
@@ -34,6 +34,7 @@ $(() => {
 
   let handleMessage = (gameState) => {
     //console.debug("onmessage", gameState);
+    //TODO: apply received state to phaser
   };
 
   // let interval = setInterval(() => {
@@ -58,8 +59,10 @@ $(() => {
   }
 
   function update () {
+    //TODO: send the change in velocity to the server?
     //  Reset the players velocity (movement)
     diamond.body.velocity.x = 0;
+    diamond.body.velocity.y = 0;
     if (cursors.left.isDown) {
       //  Move to the left
       diamond.body.velocity.x = -150;
