@@ -19,6 +19,8 @@ export default () => {
 
     socket.onopen = (event) => {
       console.debug("onopen", event);
+      // TODO: create vue UI for registering
+      // TODO: get hold of our player's Id. Maybe the registration should be an http post?
       sendMessage(messageTypes.Register, "Foobar")
     };
 
@@ -35,29 +37,51 @@ export default () => {
   };
 
   let handleMessage = (gameState) => {
-    //console.debug("onmessage", gameState);
-    //TODO: apply received state to phaser
+    // let planetPos = gameState.PlanetPos;
+    // let planetRadius = gameState.PlanetRadius;
+    let players = gameState.Players;
+    for(let player of players) {
+      let clientPlayer = clientPlayers[player.Id];
+      if (!clientPlayer) {
+        clientPlayer = clientPlayers[player.Id] = createPlayerSprite(player);
+      }
+      clientPlayer.centerX = player.Pos[0];
+      clientPlayer.centerY = player.Pos[1];
+    }
   };
 
-  // let interval = setInterval(() => {
-  //   socket.send(JSON.stringify({
-  //     inMsg: "" + new Date().getSeconds()
-  //   }))
-  // }, 3000);
+  let clientPlayers = {};
+  let viewPortWidth = 800;
+  let viewPortHeight = 600;
+  let worldWidth = 800;
+  let worldHeight = 600;
 
   function preload () {
     game.load.image('diamond', 'assets/diamond.png');
   }
 
-  let diamond;
+  let planet;
   let cursors;
 
+  function createPlanetSprite() {
+    let planet = game.add.sprite(0, 0, 'diamond');
+    planet.scale.setTo(5, 5);
+    planet.centerX = 0;
+    planet.centerY = 0;
+    return planet;
+  }
+
+  function createPlayerSprite(player) {
+    return game.add.sprite(0, 0, 'diamond');
+  }
+
   function create () {
-    diamond = game.add.sprite(game.world.centerX, game.world.centerY, 'diamond');
-    game.physics.arcade.enable(diamond);
-    diamond.body.collideWorldBounds = true;
+    game.world.setBounds(-worldWidth/2, -worldHeight/2, worldWidth, worldHeight);
     cursors = game.input.keyboard.createCursorKeys();
-    connectToServer()
+    planet = createPlanetSprite();
+    game.camera.x = -game.camera.view.width / 2;
+    game.camera.y = -game.camera.view.height / 2;
+    connectToServer();
   }
 
   function update () {
@@ -67,21 +91,30 @@ export default () => {
     // diamond.body.velocity.y = 0;
     if (cursors.left.isDown) {
       //  Move to the left
-      diamond.body.velocity.x -= 15;
+      // diamond.body.velocity.x -= 15;
+      game.camera.x -= 5;
     } else if (cursors.right.isDown) {
       //  Move to the right
-      diamond.body.velocity.x += 15;
+      // diamond.body.velocity.x += 15;
+      game.camera.x += 5;
     }
 
     if (cursors.up.isDown) {
       //  Move up
-      diamond.body.velocity.y -= 15;
+      // diamond.body.velocity.y -= 15;
+      game.camera.y -= 5;
     } else if (cursors.down.isDown) {
       //  Move down
-      diamond.body.velocity.y += 15;
+      // diamond.body.velocity.y += 15;
+      game.camera.y += 5;
     }
   }
+
+  function render() {
+    // game.debug.cameraInfo(this.game.camera, 32, 32);
+    // game.debug.spriteInfo(planet, 370, 32);
+  }
   console.debug("Creating Phaser instance..");
-  let game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+  let game = new Phaser.Game(viewPortWidth, viewPortHeight, Phaser.AUTO, '', { preload: preload, create: create, update: update, render: render });
 
 }

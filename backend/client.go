@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"github.com/lsim/gameexperiments/backend/game"
+	"github.com/vova616/chipmunk/vect"
 )
 
 const (
@@ -22,9 +23,13 @@ const (
 	maxMessageSize = 512
 )
 
+
+
 // Maybe this should be somewhere else?
 type OutBoundMessage struct {
-	GameState game.State
+	PlanetPos    vect.Vect
+	PlanetRadius float32
+	Players      []game.Player
 }
 
 type MessageType int

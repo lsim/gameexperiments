@@ -13,7 +13,7 @@ type Hub struct {
 	clients map[*Client]bool
 
 	// Inbound messages from the clients.
-	broadcast chan OutBoundMessage
+	broadcast chan *OutBoundMessage
 
 	// Register requests from the clients.
 	register chan *Client
@@ -27,7 +27,7 @@ type Hub struct {
 
 func newHub() *Hub {
 	return &Hub{
-		broadcast:  make(chan OutBoundMessage),
+		broadcast:  make(chan *OutBoundMessage),
 		receive:    make(chan ClientInBoundMessage),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
@@ -35,13 +35,13 @@ func newHub() *Hub {
 	}
 }
 
-var framesPerSecond = 20.0
+var framesPerSecond = float32(15.0)
 var millisPerFrame = time.Duration(1000.0 / framesPerSecond)
 
-func (h *Hub) broadcastMessage(message OutBoundMessage) {
+func (h *Hub) broadcastMessage(message *OutBoundMessage) {
 	for client := range h.clients {
 		select {
-		case client.send <- message:
+		case client.send <- *message:
 		default:
 			close(client.send)
 			delete(h.clients, client)
@@ -53,7 +53,23 @@ func (h *Hub) removeClient(client *Client, gameState *game.State) {
 	if _, ok := h.clients[client]; ok {
 		delete(h.clients, client)
 		close(client.send)
+
 		gameState.RemovePlayer(client.player)
+	}
+}
+
+func buildOutBoundMessage(gameState *game.State) *OutBoundMessage {
+	var players []game.Player
+	for _, playerShape := range gameState.PlayerShapes {
+		player := *playerShape.UserData.(*game.Player)
+		//log.Printf("Player %v position %v\n", player.Id, playerShape.Body.Position())
+		player.Pos = playerShape.Body.Position()
+		players = append(players, player)
+	}
+	return &OutBoundMessage{
+		PlanetPos:    gameState.PlanetShape.Body.Position(),
+		PlanetRadius: 70.0, //TODO: where does this come from?
+		Players:      players,
 	}
 }
 
@@ -68,8 +84,8 @@ func (h *Hub) run() {
 		select {
 		case <-ticker.C:
 			// Evaluate a step on the game
-			gameState.RunStep()
-			h.broadcastMessage(OutBoundMessage{*gameState})
+			gameState.RunStep(framesPerSecond)
+			h.broadcastMessage(buildOutBoundMessage(gameState))
 		case client := <-h.register:
 			h.clients[client] = true
 		case client := <-h.unregister:
