@@ -16,40 +16,47 @@ var (
 )
 
 type Player struct {
-	Id int
-	Name     string
-	Pos      vect.Vect
-	Velocity vect.Vect
+	Id    int
+	Name  string
+	Shape *chipmunk.Shape
 }
 
-//func (player *Player) ApplyForce(vector vect.Vect) {
-//	player.Velocity.Add(&vect)
-//}
+func (player *Player) AddThrust() {
+	if player != nil {
+		// Need to create a vector pointing in the direction indicated by the angle
+		direction := vect.FromAngle(player.Shape.Body.Angle())
+		direction.Mult(20.0)
+		player.Shape.Body.AddForce(float32(direction.X), float32(direction.Y))
+	}
+}
+
+func (player *Player) Rotate(amount float32) {
+	if player != nil {
+		player.Shape.Body.AddAngularVelocity(amount)
+	}
+}
 
 type State struct {
 	Players      []*Player
 	StepCount    int
 	Space        *chipmunk.Space
 	PlanetShape  *chipmunk.Shape
-	PlayerShapes []*chipmunk.Shape
 }
 
-//func (state *State) GetPlayers() []*Player {
-//	return state.Players
-//}
+var idCounter int = 0
 
 func (state *State) AddPlayer(name string) *Player {
-	newPlayer := Player{Name: name, Id: len(state.Players)}
+	playerShape := createPlayerShape(state.Space)
+	newPlayer := Player{Name: name, Id: idCounter, Shape: playerShape}
+	idCounter += 1
 	log.Printf("Adding player %v", newPlayer)
 	state.Players = append(state.Players, &newPlayer)
-	playerShape := createPlayer(state.Space)
-	playerShape.UserData = &newPlayer
-	state.PlayerShapes = append(state.PlayerShapes, playerShape)
 	return &newPlayer
 }
 
 func (state *State) RemovePlayer(player *Player) {
 	if player != nil {
+		state.Space.RemoveBody(player.Shape.Body)
 		for i := 0; i < len(state.Players); i++ {
 			if state.Players[i].Id == player.Id {
 				log.Printf("Removing player %v", *player)
@@ -57,22 +64,10 @@ func (state *State) RemovePlayer(player *Player) {
 				break
 			}
 		}
-		for i := 0; i < len(state.PlayerShapes); i++ {
-			playerShape := state.PlayerShapes[i]
-			if playerShape.UserData.(*Player).Id == player.Id {
-				state.Space.RemoveBody(playerShape.Body)
-				state.PlayerShapes = append(state.PlayerShapes[:i], state.PlayerShapes[i+1:]...)
-			}
-		}
 	}
 }
 
 func (state *State) RunStep(fps float32) {
-	//log.Printf("Running step %v", state.StepCount)
-	//for _,player := range state.Players {
-	//	(player).Pos.Add(player.Velocity)
-	//}
-	//state.StepCount++
 	state.Space.Step(vect.Float(1 / fps))
 }
 
@@ -81,13 +76,12 @@ func CreateInstance() *State {
 	space.Iterations = 20 // Number of refining iterations when computing collisions
 	planet := createPlanet(space)
 	return &State{
-		Players: []*Player{},
 		PlanetShape: planet,
 		Space: space,
 	}
 }
 
-func createPlayer(space *chipmunk.Space) *chipmunk.Shape {
+func createPlayerShape(space *chipmunk.Space) *chipmunk.Shape {
 	playerShape := chipmunk.NewCircle(vect.Vector_Zero, playerRadius)
 	playerBody := chipmunk.NewBody(vect.Float(playerMass), playerShape.Moment(playerMass))
 	startRadius := vect.Float(200)
@@ -96,7 +90,7 @@ func createPlayer(space *chipmunk.Space) *chipmunk.Shape {
 	// This is an attempt at placing the player into an orbit around the central planet - see https://github.com/slembcke/Chipmunk2D/blob/master/demo/Planet.c#L36
 	v := vect.Float(math.Sqrt(float64(gravityStrength / startRadius)) / float64(startRadius))
 	initialVelocity := vect.Perp(startPos)
-	initialVelocity.Mult(v * 1.15)
+	initialVelocity.Mult(v)
 	playerBody.SetVelocity(float32(initialVelocity.X), float32(initialVelocity.Y))
 	playerBody.UpdateVelocityFunc = planetGravityVelocity
 	playerBody.AddShape(playerShape)
@@ -108,7 +102,7 @@ func createPlanet(space *chipmunk.Space) *chipmunk.Shape {
 	shape := chipmunk.NewCircle(vect.Vector_Zero, planetRadius)
 	planetBody := chipmunk.NewBody(vect.Float(planetMass), shape.Moment(planetMass))
 	planetBody.AddShape(shape)
-	planetBody.SetAngularVelocity(0.2)
+	//planetBody.SetAngularVelocity(0.2)
 	space.AddBody(planetBody)
 	return shape
 }

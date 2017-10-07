@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"github.com/lsim/gameexperiments/backend/game"
+	"github.com/vova616/chipmunk/vect"
 )
 
 const (
@@ -27,6 +28,13 @@ type OutboundMessage struct {
 	Data interface{}
 }
 
+type PlayerInfo struct {
+	Id    int
+	Name  string
+	Pos   vect.Vect
+	Angle vect.Float
+}
+
 type MessageType int
 
 const (
@@ -34,6 +42,9 @@ const (
 	UpdatePlayers MessageType = iota
 	Registered MessageType = iota
 	Unregister MessageType = iota
+	RotateClockWise MessageType = iota
+	RotateCounterClockWise MessageType = iota
+	IncreaseThrust MessageType = iota
 )
 
 type InBoundMessage struct {

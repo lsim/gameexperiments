@@ -11,11 +11,13 @@ let messageTypes = {
   UpdatePlayers: 1,
   Registered: 2,
   Unregister: 3,
+  RotateClockWise: 4,
+  RotateCounterClockWise: 5,
+  AddThrust: 6,
 };
 
 const input = new QueueingSubject();
 const { messages, connectionStatus } = websocketConnect(`ws://${location.host}/api/socket`, input);
-// const jsonMessages = messages.map((stringMessage) => JSON.parse(stringMessage));
 
 const jsonReceivedSubject = new Subject();
 messages.map((stringMessage) => JSON.parse(stringMessage)).subscribe(jsonReceivedSubject);
@@ -57,5 +59,16 @@ export default {
     playerId = null;
     sendObject({Type: messageTypes.Unregister});
     playerUnregisteredSubject.next();
+  },
+  addThrust() {
+    sendObject({Type: messageTypes.AddThrust})
+  },
+  rotate(direction) {
+    if (direction > 0) {
+      sendObject({Type: messageTypes.RotateClockWise});
+    } else {
+      sendObject({Type: messageTypes.RotateCounterClockWise});
+    }
   }
+
 }

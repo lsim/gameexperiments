@@ -36,8 +36,9 @@ func newHub() *Hub {
 	}
 }
 
-var framesPerSecond = float32(15.0)
+var framesPerSecond = float32(10.0)
 var millisPerFrame = time.Duration(1000.0 / framesPerSecond)
+// TODO: simulation framerate should be high - but update-broadcast rate could be slower
 
 func (h *Hub) broadcastMessage(message *OutboundMessage) {
 	for client := range h.clients {
@@ -56,17 +57,22 @@ func (h *Hub) removeClient(client *Client) {
 	if _, ok := h.clients[client]; ok {
 		delete(h.clients, client)
 		close(client.send)
-		h.gameState.RemovePlayer(client.player)
+		if client.player != nil {
+			h.gameState.RemovePlayer(client.player)
+		}
 	}
 }
 
 func buildUpdatePlayersMessage(gameState *game.State) *OutboundMessage {
-	var players []game.Player
-	for _, playerShape := range gameState.PlayerShapes {
-		player := *playerShape.UserData.(*game.Player)
-		//log.Printf("Player %v position %v\n", player.Id, playerShape.Body.Position())
-		player.Pos = playerShape.Body.Position()
-		players = append(players, player)
+	var players []PlayerInfo
+	for _, player := range gameState.Players {
+		playerInfo := PlayerInfo{
+			Id:    player.Id,
+			Name:  player.Name,
+			Pos:   player.Shape.Body.Position(),
+			Angle: player.Shape.Body.Angle(),
+		}
+		players = append(players, playerInfo)
 	}
 	return &OutboundMessage{
 		Type: UpdatePlayers,
@@ -106,6 +112,12 @@ func (h *Hub) run() {
 			case Unregister:
 				h.gameState.RemovePlayer(inboundMessage.client.player)
 				inboundMessage.client.player = nil
+			case RotateClockWise:
+				inboundMessage.client.player.Rotate(0.1)
+			case RotateCounterClockWise:
+				inboundMessage.client.player.Rotate(-0.1)
+			case IncreaseThrust:
+				inboundMessage.client.player.AddThrust()
 			}
 		}
 	}
