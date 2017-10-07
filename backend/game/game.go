@@ -96,7 +96,7 @@ func createPlayer(space *chipmunk.Space) *chipmunk.Shape {
 	// This is an attempt at placing the player into an orbit around the central planet - see https://github.com/slembcke/Chipmunk2D/blob/master/demo/Planet.c#L36
 	v := vect.Float(math.Sqrt(float64(gravityStrength / startRadius)) / float64(startRadius))
 	initialVelocity := vect.Perp(startPos)
-	initialVelocity.Mult(v)
+	initialVelocity.Mult(v * 1.15)
 	playerBody.SetVelocity(float32(initialVelocity.X), float32(initialVelocity.Y))
 	playerBody.UpdateVelocityFunc = planetGravityVelocity
 	playerBody.AddShape(playerShape)

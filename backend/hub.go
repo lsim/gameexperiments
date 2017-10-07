@@ -12,8 +12,7 @@ type Hub struct {
 	// Registered clients.
 	clients map[*Client]bool
 
-	// Inbound messages from the clients.
-	broadcast chan *OutBoundMessage
+	broadcast chan *OutboundMessage
 
 	// Register requests from the clients.
 	register chan *Client
@@ -23,11 +22,13 @@ type Hub struct {
 
 	// Receive data from client
 	receive chan ClientInBoundMessage
+
+	gameState *game.State
 }
 
 func newHub() *Hub {
 	return &Hub{
-		broadcast:  make(chan *OutBoundMessage),
+		broadcast:  make(chan *OutboundMessage),
 		receive:    make(chan ClientInBoundMessage),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
@@ -38,27 +39,28 @@ func newHub() *Hub {
 var framesPerSecond = float32(15.0)
 var millisPerFrame = time.Duration(1000.0 / framesPerSecond)
 
-func (h *Hub) broadcastMessage(message *OutBoundMessage) {
+func (h *Hub) broadcastMessage(message *OutboundMessage) {
 	for client := range h.clients {
-		select {
-		case client.send <- *message:
-		default:
-			close(client.send)
-			delete(h.clients, client)
+		if client.player != nil {
+			select {
+			case client.send <- *message:
+			default:
+				log.Printf("Failed to send message to client - removing client %v, %v", client.player.Name, client.player.Id)
+				h.removeClient(client)
+			}
 		}
 	}
 }
 
-func (h *Hub) removeClient(client *Client, gameState *game.State) {
+func (h *Hub) removeClient(client *Client) {
 	if _, ok := h.clients[client]; ok {
 		delete(h.clients, client)
 		close(client.send)
-
-		gameState.RemovePlayer(client.player)
+		h.gameState.RemovePlayer(client.player)
 	}
 }
 
-func buildOutBoundMessage(gameState *game.State) *OutBoundMessage {
+func buildUpdatePlayersMessage(gameState *game.State) *OutboundMessage {
 	var players []game.Player
 	for _, playerShape := range gameState.PlayerShapes {
 		player := *playerShape.UserData.(*game.Player)
@@ -66,15 +68,14 @@ func buildOutBoundMessage(gameState *game.State) *OutBoundMessage {
 		player.Pos = playerShape.Body.Position()
 		players = append(players, player)
 	}
-	return &OutBoundMessage{
-		PlanetPos:    gameState.PlanetShape.Body.Position(),
-		PlanetRadius: 70.0, //TODO: where does this come from?
-		Players:      players,
+	return &OutboundMessage{
+		Type: UpdatePlayers,
+		Data: players,
 	}
 }
 
 func (h *Hub) run() {
-	gameState := game.CreateInstance()
+	h.gameState = game.CreateInstance()
 	ticker := time.NewTicker(time.Millisecond * millisPerFrame)
 	defer func() {
 		ticker.Stop()
@@ -84,20 +85,27 @@ func (h *Hub) run() {
 		select {
 		case <-ticker.C:
 			// Evaluate a step on the game
-			gameState.RunStep(framesPerSecond)
-			h.broadcastMessage(buildOutBoundMessage(gameState))
+			h.gameState.RunStep(framesPerSecond)
+			h.broadcastMessage(buildUpdatePlayersMessage(h.gameState))
 		case client := <-h.register:
 			h.clients[client] = true
 		case client := <-h.unregister:
-			h.removeClient(client, gameState)
+			h.removeClient(client)
 		case message := <-h.broadcast:
 			h.broadcastMessage(message)
 		case inboundMessage := <- h.receive:
 			log.Printf("Received message of type %v", inboundMessage.message.Type)
 			switch inboundMessage.message.Type {
 			case Register:
-				player := gameState.AddPlayer(inboundMessage.message.Data.(string))
+				player := h.gameState.AddPlayer(inboundMessage.message.Data.(string))
 				inboundMessage.client.player = player
+				inboundMessage.client.send<-OutboundMessage{
+					Type: Registered,
+					Data: player.Id,
+				}
+			case Unregister:
+				h.gameState.RemovePlayer(inboundMessage.client.player)
+				inboundMessage.client.player = nil
 			}
 		}
 	}

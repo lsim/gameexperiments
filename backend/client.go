@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"github.com/lsim/gameexperiments/backend/game"
-	"github.com/vova616/chipmunk/vect"
 )
 
 const (
@@ -23,20 +22,18 @@ const (
 	maxMessageSize = 512
 )
 
-
-
-// Maybe this should be somewhere else?
-type OutBoundMessage struct {
-	PlanetPos    vect.Vect
-	PlanetRadius float32
-	Players      []game.Player
+type OutboundMessage struct {
+	Type MessageType
+	Data interface{}
 }
 
 type MessageType int
 
 const (
 	Register MessageType = iota
-
+	UpdatePlayers MessageType = iota
+	Registered MessageType = iota
+	Unregister MessageType = iota
 )
 
 type InBoundMessage struct {
@@ -56,7 +53,7 @@ type Client struct {
 	conn *websocket.Conn
 
 	// Buffered channel of outbound messages.
-	send chan OutBoundMessage
+	send chan OutboundMessage
 
 	receive chan InBoundMessage
 
@@ -80,7 +77,7 @@ func (c *Client) readPump() {
 	for {
 		message := InBoundMessage{}
 		if err := c.conn.ReadJSON(&message); err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 				log.Printf("error: %v", err)
 			}
 			break
@@ -137,7 +134,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client := &Client{
 		hub:     hub,
 		conn:    conn,
-		send:    make(chan OutBoundMessage, 64),
+		send:    make(chan OutboundMessage, 64),
 		receive: make(chan InBoundMessage, 64),
 	}
 	client.hub.register <- client
