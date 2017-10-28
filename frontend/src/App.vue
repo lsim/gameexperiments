@@ -25,10 +25,21 @@ export default {
 }
 </script>
 <style lang="scss">
-  .app-login {
+  #app {
+    height: 100vh; // Set to 100% height of viewport
+    display: grid; // Use new grid fanciness
+    grid-template-columns: 1fr 10fr 1fr;
+    grid-template-rows: 1fr 20fr 1fr;
+    grid-template-areas:
+      "lg hd rg"
+      "lg main rg"
+      "lg ft rg";
 
-  }
-  .app-game {
-
+    .app-login {
+      grid-area: hd;
+    }
+    .app-game {
+      grid-area: main;
+    }
   }
 </style>

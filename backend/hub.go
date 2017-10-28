@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+var (
+	framesPerSecond = float32(100.0)
+	broadcastsPerSecond = float32(10.0)
+)
+
 // hub maintains the set of active clients and broadcasts messages to the
 // clients.
 type Hub struct {
@@ -35,10 +40,6 @@ func newHub() *Hub {
 		clients:    make(map[*Client]bool),
 	}
 }
-
-var framesPerSecond = float32(10.0)
-var millisPerFrame = time.Duration(1000.0 / framesPerSecond)
-// TODO: simulation framerate should be high - but update-broadcast rate could be slower
 
 func (h *Hub) broadcastMessage(message *OutboundMessage) {
 	for client := range h.clients {
@@ -82,17 +83,19 @@ func buildUpdatePlayersMessage(gameState *game.State) *OutboundMessage {
 
 func (h *Hub) run() {
 	h.gameState = game.CreateInstance()
-	ticker := time.NewTicker(time.Millisecond * millisPerFrame)
+	frameTicker := time.NewTicker(time.Millisecond * time.Duration(1000.0 / framesPerSecond))
+	broadcastTicker := time.NewTicker(time.Millisecond * time.Duration(1000.0 / broadcastsPerSecond))
 	defer func() {
-		ticker.Stop()
+		frameTicker.Stop()
+		broadcastTicker.Stop()
 	}()
 
 	for {
 		select {
-		case <-ticker.C:
-			// Evaluate a step on the game
-			h.gameState.RunStep(framesPerSecond)
+		case <- broadcastTicker.C:
 			h.broadcastMessage(buildUpdatePlayersMessage(h.gameState))
+		case <-frameTicker.C:
+			h.gameState.RunStep(framesPerSecond)
 		case client := <-h.register:
 			h.clients[client] = true
 		case client := <-h.unregister:

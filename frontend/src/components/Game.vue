@@ -71,6 +71,12 @@
       },
       phaserPreload() {
         this.phaserGame.load.image('diamond', 'assets/diamond.png');
+        this.phaserGame.scale.scaleMode = Phaser.ScaleManager.RESIZE;
+        this.phaserGame.scale.setResizeCallback(() => {
+//          this.phaserGame.scale.setMaximum();
+          this.phaserGame.camera.x = -this.phaserGame.camera.view.width / 2;
+          this.phaserGame.camera.y = -this.phaserGame.camera.view.height / 2;
+        });
       },
       phaserCreate() {
         this.phaserGame.world.setBounds(-this.worldWidth/2, -this.worldHeight/2, this.worldWidth, this.worldHeight);
@@ -104,22 +110,20 @@
 
 //        graphics.lineStyle(2, 0xffd900, 1);
         planet.beginFill(0xFF0000, 1);
-        planet.drawCircle(0, 0, 70);
+        planet.drawCircle(0, 0, 2 * 70);
 
         return planet;
       },
       createPlayerSprite(name) {
         let player = this.phaserGame.add.graphics(0, 0);
-
+        //TODO: It would be neat if the vertices of a player's geometry was received from the server, when the player connects :)
         player.beginFill(0x00FF00, 1);
         player.moveTo(-5, 5);
         player.lineTo(5, 0);
         player.lineTo(-5, -5);
-        player.lineTo(-3, 0);
-        player.lineTo(-5, 5);
+//        player.lineTo(-3, 0);
         player.endFill();
         player.anchor.setTo(0.5, 0.5);
-        player.width = player.height = 25;
         player.text = this.phaserGame.add.text(100, 100, name, {
           font: "9px Arial",
           fill: "#fff",
@@ -135,7 +139,7 @@
       });
       this.playerUnregisteredSubscription = SocketService.getPlayerUnregisteredSubject().subscribe(() => {
         if (this.playerId !== null && this.clientPlayers[this.playerId] !== null) {
-          this.clientPlayers[this.playerId].text.destroy()
+          this.clientPlayers[this.playerId].text.destroy();
           this.clientPlayers[this.playerId].destroy();
           delete this.clientPlayers[this.playerId];
         }

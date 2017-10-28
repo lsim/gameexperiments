@@ -8,7 +8,6 @@ import (
 )
 
 var (
-	playerRadius float32 = 25
 	playerMass float32 = 1
 	planetRadius float32 = 70.0
 	planetMass float32 = 100
@@ -25,7 +24,7 @@ func (player *Player) AddThrust() {
 	if player != nil {
 		// Need to create a vector pointing in the direction indicated by the angle
 		direction := vect.FromAngle(player.Shape.Body.Angle())
-		direction.Mult(20.0)
+		direction.Mult(50.0)
 		player.Shape.Body.AddForce(float32(direction.X), float32(direction.Y))
 	}
 }
@@ -73,7 +72,7 @@ func (state *State) RunStep(fps float32) {
 
 func CreateInstance() *State {
 	space := chipmunk.NewSpace()
-	space.Iterations = 20 // Number of refining iterations when computing collisions
+	space.Iterations = 250 // Number of refining iterations when computing collisions
 	planet := createPlanet(space)
 	return &State{
 		PlanetShape: planet,
@@ -82,7 +81,14 @@ func CreateInstance() *State {
 }
 
 func createPlayerShape(space *chipmunk.Space) *chipmunk.Shape {
-	playerShape := chipmunk.NewCircle(vect.Vector_Zero, playerRadius)
+	vertices := chipmunk.Vertices{
+		vect.Vect{ -5, 5},
+		vect.Vect{ 5, 0},
+		vect.Vect{ -5, -5},
+		//vect.Vect{ -3, 0},
+	}
+	playerShape := chipmunk.NewPolygon(vertices, vect.Vect{})
+	//playerShape := chipmunk.NewCircle(vect.Vector_Zero, playerRadius)
 	playerBody := chipmunk.NewBody(vect.Float(playerMass), playerShape.Moment(playerMass))
 	startRadius := vect.Float(200)
 	startPos := vect.Vect{startRadius, 0}
@@ -100,7 +106,7 @@ func createPlayerShape(space *chipmunk.Space) *chipmunk.Shape {
 
 func createPlanet(space *chipmunk.Space) *chipmunk.Shape {
 	shape := chipmunk.NewCircle(vect.Vector_Zero, planetRadius)
-	planetBody := chipmunk.NewBody(vect.Float(planetMass), shape.Moment(planetMass))
+	planetBody := chipmunk.NewBodyStatic() //(vect.Float(planetMass), shape.Moment(planetMass))
 	planetBody.AddShape(shape)
 	//planetBody.SetAngularVelocity(0.2)
 	space.AddBody(planetBody)
