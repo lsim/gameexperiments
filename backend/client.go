@@ -45,6 +45,7 @@ const (
 	RotateClockWise MessageType = iota
 	RotateCounterClockWise MessageType = iota
 	IncreaseThrust MessageType = iota
+	PlayerDied MessageType = iota
 )
 
 type InBoundMessage struct {

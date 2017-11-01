@@ -4,6 +4,7 @@ import { QueueingSubject } from 'queueing-subject'
 import websocketConnect from 'rxjs-websockets'
 import 'rxjs/add/operator/map';
 import 'rxjs/add/operator/take';
+import 'rxjs/add/operator/retryWhen';
 import { Subject } from 'rxjs'
 
 let messageTypes = {
@@ -14,6 +15,7 @@ let messageTypes = {
   RotateClockWise: 4,
   RotateCounterClockWise: 5,
   AddThrust: 6,
+  PlayerDied: 7,
 };
 
 const input = new QueueingSubject();
@@ -28,10 +30,19 @@ const sendObject = (transmissionObj) => input.next(JSON.stringify(transmissionOb
 
 let playerId = null;
 
+// If player dies, we notify 'unregister' listeners
+jsonReceivedSubject
+  .filter((m) => m.Type === messageTypes.PlayerDied && playerId && m.Data === playerId)
+  .subscribe(playerUnregisteredSubject);
+
+playerUnregisteredSubject.subscribe(() => {
+  playerId = null;
+});
+
 export default {
+  messageTypes: messageTypes,
   getMessageSubject: () => jsonReceivedSubject,
-  getPlayerUpdateSubject: () => jsonReceivedSubject.filter((m) => m.Type === messageTypes.UpdatePlayers).map(m => m.Data),
-  getPlayerRegisteredSubject: () => jsonReceivedSubject.filter((m) => m.Type === messageTypes.Registered).map(m => m.Data),
+  getTypedMessageSubject: (type) => jsonReceivedSubject.filter((m) => m.Type === type).map(m => m.Data),
   getPlayerUnregisteredSubject: () => playerUnregisteredSubject,
   getConnectionStatusSubject: () => connectionStatus,
   send: sendObject,
@@ -56,7 +67,6 @@ export default {
     if (playerId === null) {
       console.debug("unregisterPlayer - no player registration exists! Doing nothing");
     }
-    playerId = null;
     sendObject({Type: messageTypes.Unregister});
     playerUnregisteredSubject.next();
   },

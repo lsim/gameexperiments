@@ -10,7 +10,7 @@
   import SocketService from '../services/socket'
 
   export default {
-    name: 'experiments',
+    name: 'login',
     data() {
       return {
         playerName: "",
@@ -29,7 +29,6 @@
             (playerId) => this.playerRegistered = true,
             (error) => console.info("Error registering: ", error)
           );
-          this.playerName = "";
         }
       },
       unregister() {
@@ -37,8 +36,10 @@
         this.playerRegistered = false;
       }
     },
-    components: {
-
+    mounted() {
+      SocketService.getPlayerUnregisteredSubject().subscribe(() => {
+        this.playerRegistered = false;
+      })
     }
   }
 </script>

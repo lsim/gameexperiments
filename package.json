@@ -31,6 +31,7 @@
   },
   "homepage": "https://github.com/lsim/gameexperiments#readme",
   "dependencies": {
+    "lodash": "^4.17.4",
     "phaser-ce": "^2.8.6",
     "queueing-subject": "^0.1.1",
     "rxjs-websockets": "^3.0.1",

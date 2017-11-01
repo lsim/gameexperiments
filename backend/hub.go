@@ -43,13 +43,11 @@ func newHub() *Hub {
 
 func (h *Hub) broadcastMessage(message *OutboundMessage) {
 	for client := range h.clients {
-		if client.player != nil {
-			select {
-			case client.send <- *message:
-			default:
-				log.Printf("Failed to send message to client - removing client %v, %v", client.player.Name, client.player.Id)
-				h.removeClient(client)
-			}
+		select {
+		case client.send <- *message:
+		default:
+			log.Printf("Failed to send message to client - removing client %v, %v", client.player.Name, client.player.Id)
+			h.removeClient(client)
 		}
 	}
 }
@@ -60,6 +58,15 @@ func (h *Hub) removeClient(client *Client) {
 		close(client.send)
 		if client.player != nil {
 			h.gameState.RemovePlayer(client.player)
+		}
+	}
+}
+
+func (h *Hub) resetClientPlayerRef(player *game.Player) {
+	for client := range h.clients {
+		if client.player == player {
+			client.player = nil
+			break
 		}
 	}
 }
@@ -81,6 +88,13 @@ func buildUpdatePlayersMessage(gameState *game.State) *OutboundMessage {
 	}
 }
 
+func buildPlayerDeadMessage(player *game.Player) *OutboundMessage {
+	return &OutboundMessage{
+		Type: PlayerDied,
+		Data: player.Id,
+	}
+}
+
 func (h *Hub) run() {
 	h.gameState = game.CreateInstance()
 	frameTicker := time.NewTicker(time.Millisecond * time.Duration(1000.0 / framesPerSecond))
@@ -96,10 +110,18 @@ func (h *Hub) run() {
 			h.broadcastMessage(buildUpdatePlayersMessage(h.gameState))
 		case <-frameTicker.C:
 			h.gameState.RunStep(framesPerSecond)
+		case deadPlayer := <-h.gameState.PlayerDeaths:
+			h.broadcastMessage(buildPlayerDeadMessage(deadPlayer))
+			h.resetClientPlayerRef(deadPlayer)
 		case client := <-h.register:
 			h.clients[client] = true
 		case client := <-h.unregister:
+			deadPlayer := client.player
 			h.removeClient(client)
+			// For now just treat quitting as dying to get some cleanup at other clients
+			if deadPlayer != nil {
+			  h.broadcastMessage(buildPlayerDeadMessage(deadPlayer))
+			}
 		case message := <-h.broadcast:
 			h.broadcastMessage(message)
 		case inboundMessage := <- h.receive:
@@ -114,13 +136,14 @@ func (h *Hub) run() {
 				}
 			case Unregister:
 				h.gameState.RemovePlayer(inboundMessage.client.player)
+				h.broadcastMessage(buildPlayerDeadMessage(inboundMessage.client.player))
 				inboundMessage.client.player = nil
 			case RotateClockWise:
 				inboundMessage.client.player.Rotate(0.1)
 			case RotateCounterClockWise:
 				inboundMessage.client.player.Rotate(-0.1)
 			case IncreaseThrust:
-				inboundMessage.client.player.AddThrust()
+				inboundMessage.client.player.AddThrust(150)
 			}
 		}
 	}
