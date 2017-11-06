@@ -8,7 +8,7 @@ import (
 
 var (
 	framesPerSecond = float32(100.0)
-	broadcastsPerSecond = float32(10.0)
+	broadcastsPerSecond = float32(1.0)
 )
 
 // hub maintains the set of active clients and broadcasts messages to the
@@ -139,6 +139,7 @@ func (h *Hub) run() {
 			h.gameState.RemoveBullet(deadBullet)
 			h.broadcastMessage(buildBulletDeadMessage(deadBullet))
 		case client := <-h.register:
+			// TODO: at this point we can send all the constants to the browser
 			h.clients[client] = true
 		case client := <-h.unregister:
 			deadPlayer := client.player
@@ -166,11 +167,11 @@ func (h *Hub) run() {
 				}
 				inboundMessage.client.player = nil
 			case RotateClockWise:
-				inboundMessage.client.player.Rotate(0.1)
+				inboundMessage.client.player.Rotate(1)
 			case RotateCounterClockWise:
-				inboundMessage.client.player.Rotate(-0.1)
+				inboundMessage.client.player.Rotate(-1)
 			case IncreaseThrust:
-				inboundMessage.client.player.AddThrust(150)
+				inboundMessage.client.player.AddThrust()
 			case Shoot:
 				if bullet, ok := inboundMessage.client.player.Shoot(); ok {
 					h.broadcastMessage(buildShootMessage(bullet))

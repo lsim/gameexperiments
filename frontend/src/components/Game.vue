@@ -38,44 +38,16 @@
                 let clientPlayer = this.clientPlayers[player.Id];
                 if (!clientPlayer) {
                   clientPlayer = this.clientPlayers[player.Id] = this.createPlayerSprite(player.Name);
-                  clientPlayer.centerX = player.Pos[0];
-                  clientPlayer.centerY = player.Pos[1];
-                  clientPlayer.rotation = player.Angle;
-                  clientPlayer.text.centerX = player.Pos[0];
-                  clientPlayer.text.centerY = player.Pos[1] - 20;
-//                  clientPlayer.body.velocity.setTo(player.Velocity[0], player.Velocity[1])
-                } else {
-//                  clientPlayer.centerX = player.Pos[0];
-//                  clientPlayer.centerY = player.Pos[1];
-//                  clientPlayer.rotation = player.Angle;
-//                  clientPlayer.text.centerX = player.Pos[0];
-//                  clientPlayer.text.centerY = player.Pos[1] - 20;
-//                  clientPlayer.body.velocity.setTo(player.Velocity[0], player.Velocity[1])
-                  // Use tweens to get smooth movement out of sparse server updates
-                  try {
-                  this.phaserGame.add.tween(clientPlayer).to(
-                    {
-                      centerX: player.Pos[0],
-                      centerY: player.Pos[1],
-                      rotation: player.Angle
-                    },
-                    1000.0/10.0,// TODO: we need to know the server update frequency here - it should be part of the initial handshake
-                    Phaser.Easing.Linear.None,
-                    true
-                  );
-                  this.phaserGame.add.tween(clientPlayer.text).to(
-                    {
-                      centerX: player.Pos[0],
-                      centerY: player.Pos[1] - 20,
-                    },
-                    1000.0/10.0,
-                    Phaser.Easing.Linear.None,
-                    true
-                  );
-                  } catch (error) {
-                    console.debug("Caught tween error", error);
+                  if (player.Id === this.playerId) {
+                    this.player = clientPlayer;
                   }
                 }
+                clientPlayer.centerX = player.Pos[0];
+                clientPlayer.centerY = player.Pos[1];
+                clientPlayer.rotation = player.Angle;
+                clientPlayer.text.centerX = player.Pos[0];
+                clientPlayer.text.centerY = player.Pos[1] - 20;
+                clientPlayer.body.velocity.setTo(player.Velocity[0], player.Velocity[1])
               }
             }
           });
@@ -137,23 +109,33 @@
         this.bulletGroup.physicsBodyType = Phaser.Physics.ARCADE;
         this.listenForPlayerUpdates();
       },
-      rotateLeft: _.throttle(() => SocketService.rotate(-1), 50, { trailing: false }),
-      rotateRight: _.throttle(() => SocketService.rotate(1), 50, { trailing: false }),
-      thrust: _.throttle(() => SocketService.addThrust(), 50, { trailing: false }),
+      rotateLeft: _.throttle((player) => {
+        player.rotation -= 0.1;
+        SocketService.rotate(-1);
+      }, 50, { trailing: false }),
+      rotateRight: _.throttle((player) => {
+        player.rotation += 0.1;
+        SocketService.rotate(1)
+      }, 50, { trailing: false }),
+      thrust: _.throttle((player) => {
+        let thrustVector = new Phaser.Point(Math.cos(player.rotation), Math.sin(player.rotation));
+        thrustVector = thrustVector.multiply(5, 5);
+        player.body.velocity.add(thrustVector.x, thrustVector.y);
+        SocketService.addThrust();
+      }, 50, { trailing: false }),
       shoot: _.throttle(() => SocketService.shoot(), 100, { trailing: false }),
       phaserUpdate() {
-        // TODO: This is where we can drive the custom physics simulation with the planet gravity
-//        _.values(this.clientPlayers).forEach((player) => {
-//          this.applyPlanetaryGravitation(player);
-//        });
-        if (this.playerId !== null) {
+        _.values(this.clientPlayers).forEach((player) => {
+          this.applyPlanetaryGravitation(player);
+        });
+        if (this.player !== null) {
           if (this.cursors.left.isDown) {
-            this.rotateLeft();
+            this.rotateLeft(this.player);
           } else if (this.cursors.right.isDown) {
-            this.rotateRight();
+            this.rotateRight(this.player);
           }
           if (this.cursors.up.isDown) {
-            this.thrust();
+            this.thrust(this.player);
           } else if (this.cursors.down.isDown) {
             this.shoot();
           }
@@ -161,7 +143,7 @@
       },
       applyPlanetaryGravitation(player) {
         let gravityStrength = 1e6; // TODO: should come from server
-        let deltaTime = this.phaserGame.time.physicsElapsedMS;
+        let deltaTime = this.phaserGame.time.physicsElapsedMS / 1000;
         let playerPos = player.position;
         let sqDist = playerPos.getMagnitudeSq();
         let multiplier = -gravityStrength/(sqDist*Math.sqrt(sqDist));
@@ -193,7 +175,7 @@
           fill: "#fff",
           align: "center"
         });
-//        this.phaserGame.physics.enable(player);
+        this.phaserGame.physics.enable(player);
         return player;
       },
       createBulletSprite(bulletInfo) {
@@ -217,6 +199,7 @@
           this.killPlayer(this.playerId);
         }
         this.playerId = null;
+        this.player = null;
       });
       this.playerShootSubscription = SocketService.getTypedMessageSubject(SocketService.messageTypes.Shoot).subscribe((bulletInfo) => {
         this.createBulletSprite(bulletInfo);

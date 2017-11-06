@@ -47,30 +47,29 @@ func CreatePlayerShape(space *chipmunk.Space) *chipmunk.Shape {
 	return playerShape
 }
 
-func (player *Player) AddThrust(amount float32) {
+func (player *Player) AddThrust() {
 	if player != nil {
 		// Need to create a vector pointing in the direction indicated by the angle
 		direction := vect.FromAngle(player.Shape.Body.Angle())
-		direction.Mult(vect.Float(amount))
-		player.Shape.Body.AddForce(float32(direction.X), float32(direction.Y))
+		direction.Mult(vect.Float(thrustFactor))
+		player.Shape.Body.AddVelocity(float32(direction.X), float32(direction.Y))
 	}
 }
 
 func (player *Player) SetInitialState() {
-	startRadius := vect.Float(200)
-	startPos := vect.Vect{startRadius, 0}
+	startPos := vect.Vect{playerStartRadius, 0}
 	player.Shape.Body.SetPosition(startPos)
 
 	// This places the player into an orbit around the central planet - see https://github.com/slembcke/Chipmunk2D/blob/master/demo/Planet.c#L36
-	v := vect.Float(math.Sqrt(float64(gravityStrength/startRadius)) / float64(startRadius))
+	v := vect.Float(math.Sqrt(float64(gravityStrength/playerStartRadius)) / float64(playerStartRadius))
 	initialVelocity := vect.Perp(startPos)
 	initialVelocity.Mult(v)
 	player.Shape.Body.SetVelocity(float32(initialVelocity.X), float32(initialVelocity.Y))
 }
 
-func (player *Player) Rotate(amount float32) {
+func (player *Player) Rotate(sign float64) {
 	if player != nil {
-		player.Shape.Body.SetAngle(player.Shape.Body.Angle() + vect.Float(amount))
+		player.Shape.Body.SetAngle(player.Shape.Body.Angle() + vect.Float(sign * rotateFactor))
 		player.Shape.Body.SetAngularVelocity(0)
 	}
 }

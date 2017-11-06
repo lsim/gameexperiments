@@ -8,10 +8,13 @@ import (
 )
 
 var (
-	playerMass      float32    = 1
-	playerLength    float32    = 20
-	planetRadius    float32    = 70.0
-	gravityStrength vect.Float = 1.0e6
+	playerMass        float32    = 1
+	playerLength      float32    = 20
+	planetRadius      float32    = 70.0
+	gravityStrength   vect.Float = 1.0e6
+	thrustFactor                 = 5
+	rotateFactor                 = 0.1
+	playerStartRadius vect.Float = 200
 	//gravityStrength vect.Float = 0
 )
 
