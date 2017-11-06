@@ -79,6 +79,7 @@ func buildUpdatePlayersMessage(gameState *game.State) *OutboundMessage {
 			Name:  player.Name,
 			Pos:   player.Shape.Body.Position(),
 			Angle: player.Shape.Body.Angle(),
+			Velocity: player.Shape.Body.Velocity(),
 		}
 		players = append(players, playerInfo)
 	}
@@ -92,6 +93,26 @@ func buildPlayerDeadMessage(player *game.Player) *OutboundMessage {
 	return &OutboundMessage{
 		Type: PlayerDied,
 		Data: player.Id,
+	}
+}
+
+func buildBulletDeadMessage(bullet *game.PlayerBullet) *OutboundMessage {
+	return &OutboundMessage{
+		Type: BulletDied,
+		Data: bullet.Id,
+	}
+}
+
+func buildShootMessage(bullet *game.PlayerBullet) *OutboundMessage {
+	body := bullet.Shape.Body
+	return &OutboundMessage{
+		Type: Shoot,
+		Data: BulletInfo{
+			Id: bullet.Id,
+			Pos: body.Position(),
+			Angle: body.Angle(),
+			Velocity: body.Velocity(),
+		},
 	}
 }
 
@@ -113,6 +134,10 @@ func (h *Hub) run() {
 		case deadPlayer := <-h.gameState.PlayerDeaths:
 			h.broadcastMessage(buildPlayerDeadMessage(deadPlayer))
 			h.resetClientPlayerRef(deadPlayer)
+			h.gameState.RemovePlayer(deadPlayer)
+		case deadBullet := <-h.gameState.BulletDeaths:
+			h.gameState.RemoveBullet(deadBullet)
+			h.broadcastMessage(buildBulletDeadMessage(deadBullet))
 		case client := <-h.register:
 			h.clients[client] = true
 		case client := <-h.unregister:
@@ -125,7 +150,7 @@ func (h *Hub) run() {
 		case message := <-h.broadcast:
 			h.broadcastMessage(message)
 		case inboundMessage := <- h.receive:
-			log.Printf("Received message of type %v", inboundMessage.message.Type)
+			//log.Printf("Received message of type %v", inboundMessage.message.Type)
 			switch inboundMessage.message.Type {
 			case Register:
 				player := h.gameState.AddPlayer(inboundMessage.message.Data.(string))
@@ -135,8 +160,10 @@ func (h *Hub) run() {
 					Data: player.Id,
 				}
 			case Unregister:
-				h.gameState.RemovePlayer(inboundMessage.client.player)
-				h.broadcastMessage(buildPlayerDeadMessage(inboundMessage.client.player))
+				if player := inboundMessage.client.player; player != nil {
+					h.gameState.RemovePlayer(player)
+					h.broadcastMessage(buildPlayerDeadMessage(player))
+				}
 				inboundMessage.client.player = nil
 			case RotateClockWise:
 				inboundMessage.client.player.Rotate(0.1)
@@ -144,6 +171,10 @@ func (h *Hub) run() {
 				inboundMessage.client.player.Rotate(-0.1)
 			case IncreaseThrust:
 				inboundMessage.client.player.AddThrust(150)
+			case Shoot:
+				if bullet, ok := inboundMessage.client.player.Shoot(); ok {
+					h.broadcastMessage(buildShootMessage(bullet))
+				}
 			}
 		}
 	}

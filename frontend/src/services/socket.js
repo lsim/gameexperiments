@@ -16,6 +16,8 @@ let messageTypes = {
   RotateCounterClockWise: 5,
   AddThrust: 6,
   PlayerDied: 7,
+  Shoot: 8,
+  BulletDied: 9,
 };
 
 const input = new QueueingSubject();
@@ -32,7 +34,7 @@ let playerId = null;
 
 // If player dies, we notify 'unregister' listeners
 jsonReceivedSubject
-  .filter((m) => m.Type === messageTypes.PlayerDied && playerId && m.Data === playerId)
+  .filter((m) => m.Type === messageTypes.PlayerDied && playerId !== null && m.Data === playerId)
   .subscribe(playerUnregisteredSubject);
 
 playerUnregisteredSubject.subscribe(() => {
@@ -79,6 +81,9 @@ export default {
     } else {
       sendObject({Type: messageTypes.RotateCounterClockWise});
     }
+  },
+  shoot() {
+    sendObject({Type: messageTypes.Shoot});
   }
 
 }

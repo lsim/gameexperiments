@@ -8,6 +8,8 @@
   import SocketService from '../services/socket'
   import _ from 'lodash'
 
+  let vect = (x, y) => new Phaser.Point(x, y);
+
   export default {
     name: 'game',
     data() {
@@ -22,7 +24,9 @@
         planet: null,
         cursors: null,
         clientPlayers: {},
+        clientBullets: {},
         explosionPool: null,
+        bulletGroup: null,
       }
     },
     methods: {
@@ -39,8 +43,16 @@
                   clientPlayer.rotation = player.Angle;
                   clientPlayer.text.centerX = player.Pos[0];
                   clientPlayer.text.centerY = player.Pos[1] - 20;
+//                  clientPlayer.body.velocity.setTo(player.Velocity[0], player.Velocity[1])
                 } else {
+//                  clientPlayer.centerX = player.Pos[0];
+//                  clientPlayer.centerY = player.Pos[1];
+//                  clientPlayer.rotation = player.Angle;
+//                  clientPlayer.text.centerX = player.Pos[0];
+//                  clientPlayer.text.centerY = player.Pos[1] - 20;
+//                  clientPlayer.body.velocity.setTo(player.Velocity[0], player.Velocity[1])
                   // Use tweens to get smooth movement out of sparse server updates
+                  try {
                   this.phaserGame.add.tween(clientPlayer).to(
                     {
                       centerX: player.Pos[0],
@@ -60,6 +72,9 @@
                     Phaser.Easing.Linear.None,
                     true
                   );
+                  } catch (error) {
+                    console.debug("Caught tween error", error);
+                  }
                 }
               }
             }
@@ -81,9 +96,16 @@
           delete this.clientPlayers[playerId];
         }
       },
+      killBullet(bulletId) {
+        let bullet = this.clientBullets[bulletId];
+        if (bullet) {
+          bullet.kill();
+          delete this.clientBullets[bulletId]
+        }
+      },
       phaserPreload() {
         this.phaserGame.load.image('planet', 'assets/planet.png');
-        this.phaserGame.load.image('player', 'assets/fighter-01.png');
+        this.phaserGame.load.image('player', 'assets/player-ship.png');
         this.phaserGame.load.spritesheet('explosion', 'assets/explosion.png', 157, 229, 19);
         // Keep game running when it doesn't have focus
         this.phaserGame.stage.disableVisibilityChange = true;
@@ -96,6 +118,7 @@
         });
       },
       phaserCreate() {
+        this.phaserGame.physics.startSystem(Phaser.Physics.ARCADE);
         this.phaserGame.world.setBounds(-this.worldWidth/2, -this.worldHeight/2, this.worldWidth, this.worldHeight);
         this.cursors = this.phaserGame.input.keyboard.createCursorKeys();
         this.planet = this.createPlanetSprite();
@@ -103,18 +126,27 @@
         this.phaserGame.camera.y = -this.phaserGame.camera.view.height / 2;
         // Set up explosions
         this.explosions = this.phaserGame.add.group();
+        this.explosions.enableBody = false;
         this.explosions.createMultiple(30, 'explosion');
         this.explosions.forEach((explosionSprite) => {
           explosionSprite.anchor.x = explosionSprite.anchor.y = 0.5;
           explosionSprite.animations.add('explosion');
         });
+        this.bulletGroup = this.phaserGame.add.group();
+        this.bulletGroup.enableBody = true;
+        this.bulletGroup.physicsBodyType = Phaser.Physics.ARCADE;
         this.listenForPlayerUpdates();
       },
-      rotateLeft: _.throttle(() => SocketService.rotate(-1), 50),
-      rotateRight: _.throttle(() => SocketService.rotate(1), 50),
-      thrust: _.throttle(() => SocketService.addThrust(), 50),
+      rotateLeft: _.throttle(() => SocketService.rotate(-1), 50, { trailing: false }),
+      rotateRight: _.throttle(() => SocketService.rotate(1), 50, { trailing: false }),
+      thrust: _.throttle(() => SocketService.addThrust(), 50, { trailing: false }),
+      shoot: _.throttle(() => SocketService.shoot(), 100, { trailing: false }),
       phaserUpdate() {
-        if (this.playerId) {
+        // TODO: This is where we can drive the custom physics simulation with the planet gravity
+//        _.values(this.clientPlayers).forEach((player) => {
+//          this.applyPlanetaryGravitation(player);
+//        });
+        if (this.playerId !== null) {
           if (this.cursors.left.isDown) {
             this.rotateLeft();
           } else if (this.cursors.right.isDown) {
@@ -123,8 +155,22 @@
           if (this.cursors.up.isDown) {
             this.thrust();
           } else if (this.cursors.down.isDown) {
+            this.shoot();
           }
         }
+      },
+      applyPlanetaryGravitation(player) {
+        let gravityStrength = 1e6; // TODO: should come from server
+        let deltaTime = this.phaserGame.time.physicsElapsedMS;
+        let playerPos = player.position;
+        let sqDist = playerPos.getMagnitudeSq();
+        let multiplier = -gravityStrength/(sqDist*Math.sqrt(sqDist));
+        let gravityVect = playerPos.clone().multiply(multiplier, multiplier);
+        this.updatePlayerVelocity(player, gravityVect, deltaTime);
+      },
+      updatePlayerVelocity(player, gravityVect, deltaTime) {
+        let timeAdjustedGravityContribution = gravityVect.multiply(deltaTime, deltaTime);
+        player.body.velocity = player.body.velocity.add(timeAdjustedGravityContribution.x, timeAdjustedGravityContribution.y);
       },
       phaserRender() {
         // this.phaserGame.debug.cameraInfo(this.[phaserGame.camera, 32, 32);
@@ -147,7 +193,19 @@
           fill: "#fff",
           align: "center"
         });
+//        this.phaserGame.physics.enable(player);
         return player;
+      },
+      createBulletSprite(bulletInfo) {
+        let bulletGraphics = this.phaserGame.add.graphics(bulletInfo.Pos[0], bulletInfo.Pos[1])
+        bulletGraphics.beginFill(0x00FFFF, 1);
+        bulletGraphics.drawRect(0, 0, 3, 1);
+        bulletGraphics.rotation = bulletInfo.Angle;
+        bulletGraphics.anchor.setTo(0.5, 0.5);
+        this.clientBullets[bulletInfo.Id] = bulletGraphics;
+        this.bulletGroup.add(bulletGraphics);
+        bulletGraphics.body.velocity.setTo(bulletInfo.Velocity[0], bulletInfo.Velocity[1]);
+        return bulletGraphics;
       }
     },
     mounted() {
@@ -159,6 +217,12 @@
           this.killPlayer(this.playerId);
         }
         this.playerId = null;
+      });
+      this.playerShootSubscription = SocketService.getTypedMessageSubject(SocketService.messageTypes.Shoot).subscribe((bulletInfo) => {
+        this.createBulletSprite(bulletInfo);
+      });
+      this.bulletDiedSubscription = SocketService.getTypedMessageSubject(SocketService.messageTypes.BulletDied).subscribe((bulletId) => {
+        this.killBullet(bulletId);
       });
       this.phaserGame = new Phaser.Game(
         this.viewPortWidth,
@@ -174,15 +238,15 @@
     beforeDestroy() {
       this.playerRegisteredSubscription.unsubscribe();
       this.playerUnregisteredSubscription.unsubscribe();
+      this.playerShootSubscription.unsubscribe();
+      this.bulletDiedSubscription.unsubscribe();
       this.phaserGame.destroy();
       let container = this.$refs.canvasContainer;
       while (container.firstChild) {
         container.removeChild(container.firstChild);
       }
     },
-    components: {
-
-    }
+    components: {}
   }
 </script>
 <style lang="sass">

@@ -33,6 +33,14 @@ type PlayerInfo struct {
 	Name  string
 	Pos   vect.Vect
 	Angle vect.Float
+	Velocity vect.Vect
+}
+
+type BulletInfo struct {
+	Id int
+	Pos vect.Vect
+	Angle vect.Float
+	Velocity vect.Vect
 }
 
 type MessageType int
@@ -46,6 +54,8 @@ const (
 	RotateCounterClockWise MessageType = iota
 	IncreaseThrust MessageType = iota
 	PlayerDied MessageType = iota
+	Shoot MessageType = iota
+	BulletDied MessageType = iota
 )
 
 type InBoundMessage struct {
