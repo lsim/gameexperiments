@@ -43,6 +43,15 @@ type BulletInfo struct {
 	Velocity vect.Vect
 }
 
+type WelcomeMessage struct {
+	PlayerMass        float32
+	PlayerLength      float32
+	PlanetRadius      float32
+	GravityStrength   vect.Float
+	ThrustFactor      int
+	RotateFactor      float32
+}
+
 type MessageType int
 
 const (
@@ -56,6 +65,7 @@ const (
 	PlayerDied MessageType = iota
 	Shoot MessageType = iota
 	BulletDied MessageType = iota
+	WelcomeClient MessageType = iota
 )
 
 type InBoundMessage struct {

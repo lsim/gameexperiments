@@ -7,15 +7,15 @@ import (
 	"time"
 )
 
-var (
-	playerMass        float32    = 1
-	playerLength      float32    = 20
-	planetRadius      float32    = 70.0
-	gravityStrength   vect.Float = 1.0e6
-	thrustFactor                 = 5
-	rotateFactor                 = 0.1
-	playerStartRadius vect.Float = 200
-	//gravityStrength vect.Float = 0
+const (
+	PlayerMass        float32    = 1
+	PlayerLength      float32    = 20
+	PlanetRadius      float32    = 70.0
+	GravityStrength   vect.Float = 1.0e6
+	ThrustFactor                 = 5
+	RotateFactor                 = 0.1
+	PlayerStartRadius vect.Float = 200
+	//GravityStrength vect.Float = 0
 )
 
 type State struct {

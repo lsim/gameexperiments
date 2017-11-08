@@ -8,7 +8,7 @@ import (
 
 var (
 	framesPerSecond = float32(100.0)
-	broadcastsPerSecond = float32(1.0)
+	broadcastsPerSecond = float32(10.0)
 )
 
 // hub maintains the set of active clients and broadcasts messages to the
@@ -116,6 +116,20 @@ func buildShootMessage(bullet *game.PlayerBullet) *OutboundMessage {
 	}
 }
 
+func buildWelcomeMessage() *OutboundMessage {
+	return &OutboundMessage{
+		Type: WelcomeClient,
+		Data: WelcomeMessage{
+			RotateFactor: game.RotateFactor,
+			PlanetRadius: game.PlanetRadius,
+			GravityStrength: game.GravityStrength,
+			PlayerLength: game.PlayerLength,
+			PlayerMass: game.PlayerMass,
+			ThrustFactor: game.ThrustFactor,
+		},
+	}
+}
+
 func (h *Hub) run() {
 	h.gameState = game.CreateInstance()
 	frameTicker := time.NewTicker(time.Millisecond * time.Duration(1000.0 / framesPerSecond))
@@ -139,8 +153,8 @@ func (h *Hub) run() {
 			h.gameState.RemoveBullet(deadBullet)
 			h.broadcastMessage(buildBulletDeadMessage(deadBullet))
 		case client := <-h.register:
-			// TODO: at this point we can send all the constants to the browser
 			h.clients[client] = true
+			client.send<-*buildWelcomeMessage()
 		case client := <-h.unregister:
 			deadPlayer := client.player
 			h.removeClient(client)

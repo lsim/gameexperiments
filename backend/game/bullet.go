@@ -9,7 +9,7 @@ const (
 	bulletMass       = 1
 	bulletWidth      = 3
 	bulletHeight     = 1
-	bulletSpeed      = 70
+	bulletSpeed      = 100
 	bulletTtlSeconds = 6
 )
 
@@ -27,7 +27,7 @@ func CreateBulletShape(space *chipmunk.Space, shooterShape *chipmunk.Shape) *chi
 	// Client and server will both need to fully simulate the game - and the server should overrule the client when they disagree
 	playerOrientation := vect.FromAngle(shooterShape.Body.Angle())
 	playerOrientation.Normalize()
-	bulletOffset := vect.Mult(playerOrientation, vect.Float(playerLength/2))
+	bulletOffset := vect.Mult(playerOrientation, vect.Float(PlayerLength/2))
 	bulletPos.Add(bulletOffset)
 	bulletShape := chipmunk.NewBox(vect.Vect{X: bulletWidth / 2}, vect.Float(bulletWidth), vect.Float(bulletHeight))
 	bulletBody := chipmunk.NewBody(bulletMass, bulletShape.Moment(bulletMass))

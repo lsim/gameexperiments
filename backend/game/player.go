@@ -31,7 +31,7 @@ func SpawnPlayer(space *chipmunk.Space, name string, id int, killCallback func(p
 }
 
 func CreatePlayerShape(space *chipmunk.Space) *chipmunk.Shape {
-	shapeScale := vect.Float(playerLength / 2)
+	shapeScale := vect.Float(PlayerLength / 2)
 	vertices := chipmunk.Vertices{
 		vect.Vect{-1 * shapeScale, 1 * shapeScale},
 		vect.Vect{1 * shapeScale, 0},
@@ -40,7 +40,7 @@ func CreatePlayerShape(space *chipmunk.Space) *chipmunk.Shape {
 
 	playerShape := chipmunk.NewPolygon(vertices, vect.Vect{})
 
-	playerBody := chipmunk.NewBody(vect.Float(playerMass), playerShape.Moment(playerMass))
+	playerBody := chipmunk.NewBody(vect.Float(PlayerMass), playerShape.Moment(PlayerMass))
 	playerBody.UpdateVelocityFunc = PlanetGravityVelocity
 	playerBody.AddShape(playerShape)
 	space.AddBody(playerBody)
@@ -51,17 +51,17 @@ func (player *Player) AddThrust() {
 	if player != nil {
 		// Need to create a vector pointing in the direction indicated by the angle
 		direction := vect.FromAngle(player.Shape.Body.Angle())
-		direction.Mult(vect.Float(thrustFactor))
+		direction.Mult(vect.Float(ThrustFactor))
 		player.Shape.Body.AddVelocity(float32(direction.X), float32(direction.Y))
 	}
 }
 
 func (player *Player) SetInitialState() {
-	startPos := vect.Vect{playerStartRadius, 0}
+	startPos := vect.Vect{PlayerStartRadius, 0}
 	player.Shape.Body.SetPosition(startPos)
 
 	// This places the player into an orbit around the central planet - see https://github.com/slembcke/Chipmunk2D/blob/master/demo/Planet.c#L36
-	v := vect.Float(math.Sqrt(float64(gravityStrength/playerStartRadius)) / float64(playerStartRadius))
+	v := vect.Float(math.Sqrt(float64(GravityStrength/PlayerStartRadius)) / float64(PlayerStartRadius))
 	initialVelocity := vect.Perp(startPos)
 	initialVelocity.Mult(v)
 	player.Shape.Body.SetVelocity(float32(initialVelocity.X), float32(initialVelocity.Y))
@@ -69,7 +69,7 @@ func (player *Player) SetInitialState() {
 
 func (player *Player) Rotate(sign float64) {
 	if player != nil {
-		player.Shape.Body.SetAngle(player.Shape.Body.Angle() + vect.Float(sign * rotateFactor))
+		player.Shape.Body.SetAngle(player.Shape.Body.Angle() + vect.Float(sign *RotateFactor))
 		player.Shape.Body.SetAngularVelocity(0)
 	}
 }

@@ -18,6 +18,7 @@ let messageTypes = {
   PlayerDied: 7,
   Shoot: 8,
   BulletDied: 9,
+  WelcomeClient: 10,
 };
 
 const input = new QueueingSubject();
@@ -41,6 +42,16 @@ playerUnregisteredSubject.subscribe(() => {
   playerId = null;
 });
 
+const getTypedSubject = (type) => jsonReceivedSubject.filter((m) => m.Type === type).map(m => m.Data);
+
+
+const gameConstantsPromise = new Promise((resolve, reject) => {
+  let welcomeSubscription = getTypedSubject(messageTypes.WelcomeClient).subscribe((gameConstants) => {
+    resolve(gameConstants);
+    welcomeSubscription.unsubscribe();
+  });
+});
+
 export default {
   messageTypes: messageTypes,
   getMessageSubject: () => jsonReceivedSubject,
@@ -48,6 +59,9 @@ export default {
   getPlayerUnregisteredSubject: () => playerUnregisteredSubject,
   getConnectionStatusSubject: () => connectionStatus,
   send: sendObject,
+  getGameConstants() {
+    return gameConstantsPromise;
+  },
   registerPlayer(playerName) {
     return new Promise((resolve, reject) => {
       if (playerId !== null) {

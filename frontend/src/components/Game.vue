@@ -27,6 +27,7 @@
         clientBullets: {},
         explosionPool: null,
         bulletGroup: null,
+        gameConstants: null,
       }
     },
     methods: {
@@ -93,6 +94,13 @@
         this.phaserGame.physics.startSystem(Phaser.Physics.ARCADE);
         this.phaserGame.world.setBounds(-this.worldWidth/2, -this.worldHeight/2, this.worldWidth, this.worldHeight);
         this.cursors = this.phaserGame.input.keyboard.createCursorKeys();
+        this.spaceBar = this.phaserGame.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+        this.phaserGame.input.keyboard.addKeyCapture([Phaser.Keyboard.UP,
+          Phaser.Keyboard.DOWN,
+          Phaser.Keyboard.LEFT,
+          Phaser.Keyboard.RIGHT,
+          Phaser.Keyboard.SPACEBAR]);
+
         this.planet = this.createPlanetSprite();
         this.phaserGame.camera.x = -this.phaserGame.camera.view.width / 2;
         this.phaserGame.camera.y = -this.phaserGame.camera.view.height / 2;
@@ -109,19 +117,25 @@
         this.bulletGroup.physicsBodyType = Phaser.Physics.ARCADE;
         this.listenForPlayerUpdates();
       },
-      rotateLeft: _.throttle((player) => {
-        player.rotation -= 0.1;
-        SocketService.rotate(-1);
+      rotateLeft: _.throttle((_this) => {
+        if (_this.player) {
+          _this.player.rotation -= _this.gameConstants.RotateFactor;
+          SocketService.rotate(-1);
+        }
       }, 50, { trailing: false }),
-      rotateRight: _.throttle((player) => {
-        player.rotation += 0.1;
-        SocketService.rotate(1)
+      rotateRight: _.throttle((_this) => {
+        if (_this.player) {
+          _this.player.rotation += _this.gameConstants.RotateFactor;
+          SocketService.rotate(1)
+        }
       }, 50, { trailing: false }),
-      thrust: _.throttle((player) => {
-        let thrustVector = new Phaser.Point(Math.cos(player.rotation), Math.sin(player.rotation));
-        thrustVector = thrustVector.multiply(5, 5);
-        player.body.velocity.add(thrustVector.x, thrustVector.y);
-        SocketService.addThrust();
+      thrust: _.throttle((_this) => {
+        if (_this.player) {
+          let thrustVector = new Phaser.Point(Math.cos(_this.player.rotation), Math.sin(_this.player.rotation));
+          thrustVector = thrustVector.multiply(_this.gameConstants.ThrustFactor, _this.gameConstants.ThrustFactor);
+          _this.player.body.velocity.add(thrustVector.x, thrustVector.y);
+          SocketService.addThrust();
+        }
       }, 50, { trailing: false }),
       shoot: _.throttle(() => SocketService.shoot(), 100, { trailing: false }),
       phaserUpdate() {
@@ -130,19 +144,20 @@
         });
         if (this.player !== null) {
           if (this.cursors.left.isDown) {
-            this.rotateLeft(this.player);
+            this.rotateLeft(this);
           } else if (this.cursors.right.isDown) {
-            this.rotateRight(this.player);
+            this.rotateRight(this);
           }
           if (this.cursors.up.isDown) {
-            this.thrust(this.player);
-          } else if (this.cursors.down.isDown) {
+            this.thrust(this);
+          }
+          if (this.spaceBar.isDown) {
             this.shoot();
           }
         }
       },
       applyPlanetaryGravitation(player) {
-        let gravityStrength = 1e6; // TODO: should come from server
+        let gravityStrength = this.gameConstants.GravityStrength;
         let deltaTime = this.phaserGame.time.physicsElapsedMS / 1000;
         let playerPos = player.position;
         let sqDist = playerPos.getMagnitudeSq();
@@ -156,18 +171,17 @@
       },
       phaserRender() {
         // this.phaserGame.debug.cameraInfo(this.[phaserGame.camera, 32, 32);
-//        this.phaserGame.debug.spriteInfo(this.planet, 370, 32);
+        // this.phaserGame.debug.spriteInfo(this.planet, 370, 32);
       },
       createPlanetSprite() {
         let planet = this.phaserGame.add.sprite(0, 0, 'planet');
-        planet.height = planet.width = 140; // TODO: should come from the server
+        planet.height = planet.width = 2 * this.gameConstants.PlanetRadius;
         planet.anchor.setTo(0.5, 0.5);
         return planet;
       },
       createPlayerSprite(name) {
         let player = this.phaserGame.add.sprite(0, 0, 'player');
-        player.height = 20; // TODO: should come from the server
-        player.width = 20;
+        player.height = player.width = this.gameConstants.PlayerLength;
 
         player.anchor.setTo(0.5, 0.5);
         player.text = this.phaserGame.add.text(100, 100, name, {
@@ -188,7 +202,21 @@
         this.bulletGroup.add(bulletGraphics);
         bulletGraphics.body.velocity.setTo(bulletInfo.Velocity[0], bulletInfo.Velocity[1]);
         return bulletGraphics;
-      }
+      },
+      initPhaserGame() {
+        if (this.gameConstants && !this.phaserGame) {
+          this.phaserGame = new Phaser.Game(
+            this.viewPortWidth,
+            this.viewPortHeight,
+            Phaser.AUTO,
+            this.$refs.canvasContainer, {
+              preload: this.phaserPreload,
+              create: this.phaserCreate,
+              update: this.phaserUpdate,
+              render: this.phaserRender
+            });
+        }
+      },
     },
     mounted() {
       this.playerRegisteredSubscription = SocketService.getTypedMessageSubject(SocketService.messageTypes.Registered).subscribe((playerId) => {
@@ -207,16 +235,10 @@
       this.bulletDiedSubscription = SocketService.getTypedMessageSubject(SocketService.messageTypes.BulletDied).subscribe((bulletId) => {
         this.killBullet(bulletId);
       });
-      this.phaserGame = new Phaser.Game(
-        this.viewPortWidth,
-        this.viewPortHeight,
-        Phaser.AUTO,
-        this.$refs.canvasContainer, {
-          preload: this.phaserPreload,
-          create: this.phaserCreate,
-          update: this.phaserUpdate,
-          render: this.phaserRender
-        });
+      SocketService.getGameConstants().then((gameConstants) => {
+        this.gameConstants = gameConstants;
+        this.initPhaserGame();
+      });
     },
     beforeDestroy() {
       this.playerRegisteredSubscription.unsubscribe();
@@ -224,6 +246,7 @@
       this.playerShootSubscription.unsubscribe();
       this.bulletDiedSubscription.unsubscribe();
       this.phaserGame.destroy();
+      this.phaserGame = null;
       let container = this.$refs.canvasContainer;
       while (container.firstChild) {
         container.removeChild(container.firstChild);

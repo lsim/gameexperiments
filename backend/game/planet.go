@@ -7,7 +7,7 @@ import (
 )
 
 func CreatePlanet(space *chipmunk.Space) *chipmunk.Shape {
-	shape := chipmunk.NewCircle(vect.Vector_Zero, planetRadius)
+	shape := chipmunk.NewCircle(vect.Vector_Zero, PlanetRadius)
 	planetBody := chipmunk.NewBodyStatic()
 	planetBody.AddShape(shape)
 	space.AddBody(planetBody)
@@ -18,7 +18,7 @@ func CreatePlanet(space *chipmunk.Space) *chipmunk.Shape {
 func PlanetGravityVelocity(body *chipmunk.Body, _ vect.Vect, damping, dt vect.Float) {
 	p := body.Position()
 	sqDist := vect.LengthSqr(p)
-	g := vect.Mult(p, vect.Float(-gravityStrength/(sqDist*vect.Float(math.Sqrt(float64(sqDist))))))
+	g := vect.Mult(p, vect.Float(-GravityStrength/(sqDist*vect.Float(math.Sqrt(float64(sqDist))))))
 	body.UpdateVelocity(g, damping, dt)
 }
 
