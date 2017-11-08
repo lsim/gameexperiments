@@ -167,7 +167,8 @@
       },
       updatePlayerVelocity(player, gravityVect, deltaTime) {
         let timeAdjustedGravityContribution = gravityVect.multiply(deltaTime, deltaTime);
-        player.body.velocity = player.body.velocity.add(timeAdjustedGravityContribution.x, timeAdjustedGravityContribution.y);
+        player.text.body.velocity = player.body.velocity = player.body.velocity.add(timeAdjustedGravityContribution.x, timeAdjustedGravityContribution.y);
+
       },
       phaserRender() {
         // this.phaserGame.debug.cameraInfo(this.[phaserGame.camera, 32, 32);
@@ -190,6 +191,7 @@
           align: "center"
         });
         this.phaserGame.physics.enable(player);
+        this.phaserGame.physics.enable(player.text);
         return player;
       },
       createBulletSprite(bulletInfo) {
